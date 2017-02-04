@@ -188,6 +188,7 @@ class CardsData
 			->leftJoin('c.type', 't')
 			->leftJoin('c.subtype', 'b')
 			->leftJoin('c.encounter', 'm')
+			->leftJoin('c.linked_to', 'l')
 			->leftJoin('c.faction', 'f');
 		$qb2 = null;
 		$qb3 = null;
@@ -320,13 +321,13 @@ class CardsData
 									$or[] = "(c.code = ?$i)";
 									$qb->setParameter($i++, $arg);
 								} else if($acronym) {
-									$or[] = "(c.name like ?$i or c.backName like ?$i)";
+									$or[] = "(c.name like ?$i or c.backName like ?$i or l.name like ?$i)";
 									$qb->setParameter($i++, "%$arg%");
 									$like = implode('% ', str_split($arg));
-									$or[] = "(REPLACE(c.name, '-', ' ') like ?$i or REPLACE(c.backName, '-', ' ') like ?$i)";
+									$or[] = "(REPLACE(c.name, '-', ' ') like ?$i or REPLACE(c.backName, '-', ' ') like ?$i or REPLACE(l.name, '-', ' ') like ?$i)";
 									$qb->setParameter($i++, "$like%");
 								} else {
-									$or[] = "(c.name like ?$i or c.backName like ?$i)";
+									$or[] = "(c.name like ?$i or c.backName like ?$i or l.name like ?$i)";
 									$qb->setParameter($i++, "%$arg%");
 								}
 							}
@@ -338,8 +339,8 @@ class CardsData
 							$or = [];
 							foreach($condition as $arg) {
 								switch($operator) {
-									case ':': $or[] = "(c.text like ?$i or c.backText like ?$i)"; break;
-									case '!': $or[] = "(c.text not like ?$i and (c.backText is null or c.backText not like ?$i))"; break;
+									case ':': $or[] = "(c.text like ?$i or c.backText like ?$i or l.text like ?$i)"; break;
+									case '!': $or[] = "(c.text not like ?$i and (c.backText is null or c.backText not like ?$i) and (l.text is null or l.text not like ?$i))"; break;
 								}
 								$qb->setParameter($i++, "%$arg%");
 								
@@ -352,8 +353,8 @@ class CardsData
 							$or = [];
 							foreach($condition as $arg) {
 								switch($operator) {
-									case ':': $or[] = "(c.flavor like ?$i or c.backFlavor like ?$i)"; break;
-									case '!': $or[] = "(c.flavor not like ?$i and (c.backFlavor is null or c.backFlavor not like ?$i))"; break;
+									case ':': $or[] = "(c.flavor like ?$i or c.backFlavor like ?$i or l.flavor like ?$i)"; break;
+									case '!': $or[] = "(c.flavor not like ?$i and (c.backFlavor is null or c.backFlavor not like ?$i) and (l.flavor is null or l.flavor not like ?$i))"; break;
 								}
 								$qb->setParameter($i++, "%$arg%");
 							}
@@ -366,14 +367,14 @@ class CardsData
 							foreach($condition as $arg) {
 								switch($operator) {
 									case ':':
-										$or[] = "((c.traits = ?$i) or (c.traits like ?".($i+1).") or (c.traits like ?".($i+2).") or (c.traits like ?".($i+3)."))";
+										$or[] = "((c.traits = ?$i) or (c.traits like ?".($i+1).") or (c.traits like ?".($i+2).") or (c.traits like ?".($i+3).")) or ((l.traits = ?$i) or (l.traits like ?".($i+1).") or (l.traits like ?".($i+2).") or (l.traits like ?".($i+3)."))";
 										$qb->setParameter($i++, "$arg.");
 										$qb->setParameter($i++, "$arg. %");
 										$qb->setParameter($i++, "%. $arg.");
 										$qb->setParameter($i++, "%. $arg. %");
 										break;
 									case '!':
-										$or[] = "(c.traits is null or ((c.traits != ?$i) and (c.traits not like ?".($i+1).") and (c.traits not like ?".($i+2).") and (c.traits not like ?".($i+3).")))";
+										$or[] = "(c.traits is null or ((c.traits != ?$i) and (c.traits not like ?".($i+1).") and (c.traits not like ?".($i+2).") and (c.traits not like ?".($i+3)."))) and (l.traits is null or ((l.traits != ?$i) and (l.traits not like ?".($i+1).") and (l.traits not like ?".($i+2).") and (l.traits not like ?".($i+3).")))";
 										$qb->setParameter($i++, "$arg.");
 										$qb->setParameter($i++, "$arg. %");
 										$qb->setParameter($i++, "%. $arg.");
@@ -389,8 +390,8 @@ class CardsData
 							$or = [];
 							foreach($condition as $arg) {
 								switch($operator) {
-									case ':': $or[] = "(c.illustrator = ?$i)"; break;
-									case '!': $or[] = "(c.illustrator != ?$i)"; break;
+									case ':': $or[] = "(c.illustrator = ?$i or l.illustrator = ?$i)"; break;
+									case '!': $or[] = "(c.illustrator != ?$i or l.illustrator != ?$i)"; break;
 								}
 								$qb->setParameter($i++, $arg);
 							}
@@ -497,12 +498,12 @@ class CardsData
 			$cardinfo['imagesrc'] = $imageurl;
 		} else {
 			$imageurl = $this->assets_helper->getUrl('bundles/cards/'.$card->getCode().'.jpg');
-	                $imagepath= $this->rootDir . '/../web' . preg_replace('/\?.*/', '', $imageurl);
-        	        if(file_exists($imagepath)) {
-                	        $cardinfo['imagesrc'] = $imageurl;
-	                } else {
-        	                $cardinfo['imagesrc'] = null;
-                	}
+			$imagepath= $this->rootDir . '/../web' . preg_replace('/\?.*/', '', $imageurl);
+			if(file_exists($imagepath)) {
+				$cardinfo['imagesrc'] = $imageurl;
+			} else {
+				$cardinfo['imagesrc'] = null;
+			}
 		}
 		
 		if(isset($cardinfo['encounter_code']) && $cardinfo['encounter_code']) {
@@ -517,15 +518,19 @@ class CardsData
 				$cardinfo['backimagesrc'] = $imageurl;
 			}else {
 				$imageurl = $this->assets_helper->getUrl('bundles/cards/'.$card->getCode().'_back.jpg');
-	                        $imagepath= $this->rootDir . '/../web' . preg_replace('/\?.*/', '', $imageurl);
-        	                if ( file_exists($imagepath)){
-                	                $cardinfo['backimagesrc'] = $imageurl;
-                        	}else {
-                                	$cardinfo['backimagesrc'] = null;
-	                        }
+				$imagepath= $this->rootDir . '/../web' . preg_replace('/\?.*/', '', $imageurl);
+				if ( file_exists($imagepath)){
+					$cardinfo['backimagesrc'] = $imageurl;
+				}else {
+					$cardinfo['backimagesrc'] = null;
+				}
 			}
 		}else {
 			$cardinfo['double_sided'] = false;
+		}
+
+		if (isset($cardinfo['linked_to_code']) && $cardinfo['linked_to_code']){
+			$cardinfo['linked_card'] = $this->getCardInfo($card->getLinkedTo());
 		}
 
 		if($api) {

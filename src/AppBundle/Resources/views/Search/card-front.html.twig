@@ -1,3 +1,4 @@
+
 <div class="col-sm-7">
 	<div>
 		<div class="panel panel-default border-{{ card.faction_code }}">
@@ -25,9 +26,16 @@
 <div class="col-sm-5" style="margin-bottom:2em">
 	<div class="{% if card.spoiler is defined and not show_spoilers %} spoiler{% endif %}">
 		{% if card.imagesrc %}
-		   <img src="{{ card.imagesrc }}" alt="{{ card.name }}" class="img-responsive" style="margin:auto">
+		   <img src="{{ card.imagesrc }}" alt="{{ card.name }}" class="img-responsive img-vertical-card" style="margin:auto">
 		{% else %}
 		   <div class="no-image" style="margin:auto"><div class="no-image-text">No image</div></div>
 		{% endif %}
 	</div>
 </div>
+
+{% block cardbackblock %} 
+{% if card.linked_card is defined %}
+{% set card = card.linked_card %}
+{% include 'AppBundle:Search:card-front.html.twig' %}
+{% endif %}
+{% endblock %}
